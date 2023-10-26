@@ -1,5 +1,7 @@
 import numpy as np
 import torch
+from torch import nn
+import torch.nn.functional as F
 
 
 class MergeLayer(torch.nn.Module):
@@ -16,6 +18,36 @@ class MergeLayer(torch.nn.Module):
     x = torch.cat([x1, x2], dim=1)
     h = self.act(self.fc1(x))
     return self.fc2(h)
+
+
+class HadamardMLP(nn.Module):
+  def __init__(self, input_dim1: int, input_dim2: int, hidden_dim: int, output_dim: int, num_layers: int = 2):
+    """
+    Perform HadamardMLP as decoder for link prediction.
+    :param input_dim1: int, dimension of first input
+    :param input_dim2: int, dimension of the second input
+    :param hidden_dim: int, hidden dimension
+    :param output_dim: int, dimension of the output
+    """
+    super().__init__()
+
+    self.lins = nn.ModuleList()
+    self.lins.append(nn.Linear(input_dim1, hidden_dim))
+    for _ in range(num_layers - 2):
+      self.lins.append(torch.nn.Linear(hidden_dim, hidden_dim))
+    self.lins.append(torch.nn.Linear(hidden_dim, output_dim))
+
+  def reset_parameters(self):
+    for lin in self.lins:
+      lin.reset_parameters()
+
+  def forward(self, input_1: torch.Tensor, input_2: torch.Tensor):
+    x = input_1 * input_2
+    for lin in self.lins[:-1]:
+      x = lin(x)
+      x = F.relu(x)
+    x = self.lins[-1](x)
+    return x
 
 
 class MLP(torch.nn.Module):

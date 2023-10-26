@@ -33,6 +33,7 @@ def args_parser():
     parser = argparse.ArgumentParser('Self-Supervised Task - Test Phase Only.')
     # TGN model parameters
     parser.add_argument('--use_memory', action='store_true', help='Whether to augment the model with a node memory')
+    parser.add_argument('--decoder', type=str, default='hadamard', choices=['hadamard','concat'], help='Decoder for link prediction choice')
     parser.add_argument('--gpu', type=int, default=0, help='Idx for the gpu to use')
     parser.add_argument('--n_head', type=int, default=2, help='Number of heads used in attention layer')
     parser.add_argument('--n_layer', type=int, default=1, help='Number of network layers')
@@ -196,7 +197,7 @@ def main():
         logger.info("************************************")
         logger.info("*********** Run {} starts *************".format(i_run))
 
-        MODEL_SAVE_PATH = f'./saved_models/{prefix}-{args.data}-{i_run}.pth'
+        MODEL_SAVE_PATH = f'./saved_models/{prefix}-{args.decoder}-{args.data}-{i_run}.pth'
 
         # Initialize Model
         tgn = TGN(neighbor_finder=train_ngh_finder, node_features=node_features,
@@ -214,7 +215,7 @@ def main():
                   mean_time_shift_dst=mean_time_shift_dst, std_time_shift_dst=std_time_shift_dst,
                   use_destination_embedding_in_message=args.use_destination_embedding_in_message,
                   use_source_embedding_in_message=args.use_source_embedding_in_message,
-                  dyrep=args.dyrep)
+                  dyrep=args.dyrep, decoder=args.decoder)
         # load saved parameters of the model
         tgn.load_state_dict(torch.load(MODEL_SAVE_PATH))  # , strict=False
         tgn = tgn.to(device)

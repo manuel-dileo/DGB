@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from collections import defaultdict
 
-from utils.utils import MergeLayer
+from utils.utils import MergeLayer, HadamardMLP
 from modules.memory import Memory
 from modules.message_aggregator import get_message_aggregator
 from modules.message_function import get_message_function
@@ -23,7 +23,9 @@ class TGN(torch.nn.Module):
                  memory_updater_type="gru",
                  use_destination_embedding_in_message=False,
                  use_source_embedding_in_message=False,
-                 dyrep=False):
+                 dyrep=False,
+                 decoder='hadamard'
+                ):
                  # num_class=1):  # MC
         super(TGN, self).__init__()
 
@@ -95,9 +97,15 @@ class TGN(torch.nn.Module):
                                                      n_neighbors=self.n_neighbors)
 
         # MLP to compute probability on an edge given two node embeddings
-        self.affinity_score = MergeLayer(self.n_node_features, self.n_node_features,
-                                         self.n_node_features,
-                                         1)
+        if decoder=='concat':
+            self.affinity_score = MergeLayer(self.n_node_features, self.n_node_features,
+                                             self.n_node_features,
+                                             1)
+                                         # num_class)  # MC
+        else:
+            self.affinity_score = HadamardMLP(self.n_node_features, self.n_node_features,
+                                             self.n_node_features,
+                                             1)
                                          # num_class)  # MC
 
     def compute_temporal_embeddings_original(self, source_nodes, destination_nodes, negative_nodes, edge_times,

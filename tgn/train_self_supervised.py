@@ -21,6 +21,7 @@ np.random.seed(0)
 parser = argparse.ArgumentParser('TGN self-supervised training')
 parser.add_argument('-d', '--data', type=str, help='Dataset name (eg. wikipedia or reddit)',
                     default='wikipedia')
+parser.add_argument('--decoder', type=str, default='hadamard', choices=['hadamard','concat'], help='Decoder for link prediction choice')
 parser.add_argument('--bs', type=int, default=200, help='Batch_size')
 parser.add_argument('--prefix', type=str, default='', help='Prefix to name the checkpoints')
 parser.add_argument('--n_degree', type=int, default=10, help='Number of neighbors to sample')
@@ -93,8 +94,8 @@ MEMORY_DIM = args.memory_dim
 
 Path("./saved_models/").mkdir(parents=True, exist_ok=True)
 Path("./saved_checkpoints/").mkdir(parents=True, exist_ok=True)
-# MODEL_SAVE_PATH = f'./saved_models/{args.prefix}-{args.data}.pth'
-get_checkpoint_path = lambda epoch: f'./saved_checkpoints/{args.prefix}-{args.data}-{epoch}.pth'
+MODEL_SAVE_PATH = f'./saved_models/{args.prefix}-{args.decoder}-{args.data}.pth'
+get_checkpoint_path = lambda epoch: f'./saved_checkpoints/{args.prefix}-{args.decoder}-{args.data}-{epoch}.pth'
 
 ### set up logger
 logging.basicConfig(level=logging.INFO)
@@ -103,7 +104,7 @@ logger.setLevel(logging.DEBUG)
 Path("log/").mkdir(parents=True, exist_ok=True)
 start_time = time.time()
 time_value = datetime.datetime.fromtimestamp(start_time)  # str(time.time())
-fh = logging.FileHandler('log/{}_{}_{}.log'.format(time_value.strftime('%Y_%m_%d_%H_%M_%S'), args.prefix, args.data))
+fh = logging.FileHandler('log/{}_{}_{}_{}.log'.format(time_value.strftime('%Y_%m_%d_%H_%M_%S'), args.prefix, args.decoder, args.data))
 fh.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.WARN)
@@ -150,7 +151,7 @@ for i in range(args.n_runs):
   start_time_run = time.time()
   logger.info("************************************")
   logger.info("********** Run {} starts. **********".format(i))
-  results_path = "results/{}_{}_{}.pkl".format(args.prefix, args.data, i)
+  results_path = "results/{}_{}_{}_{}.pkl".format(args.prefix, args.decoder, args.data, i)
   Path("results/").mkdir(parents=True, exist_ok=True)
 
   # Initialize Model
@@ -169,7 +170,7 @@ for i in range(args.n_runs):
             mean_time_shift_dst=mean_time_shift_dst, std_time_shift_dst=std_time_shift_dst,
             use_destination_embedding_in_message=args.use_destination_embedding_in_message,
             use_source_embedding_in_message=args.use_source_embedding_in_message,
-            dyrep=args.dyrep)
+            dyrep=args.dyrep, decoder=args.decoder)
   criterion = torch.nn.BCELoss()
   optimizer = torch.optim.Adam(tgn.parameters(), lr=LEARNING_RATE)
   tgn = tgn.to(device)
@@ -366,7 +367,7 @@ for i in range(args.n_runs):
   if USE_MEMORY:
     # Restore memory at the end of validation (save a model which is ready for testing)
     tgn.memory.restore_memory(val_memory_backup)
-  MODEL_SAVE_PATH = f'./saved_models/{args.prefix}-{args.data}-{i}.pth'
+  MODEL_SAVE_PATH = f'./saved_models/{args.prefix}-{args.decoder}-{args.data}-{i}.pth'
   torch.save(tgn.state_dict(), MODEL_SAVE_PATH)
   logger.info('TGN model saved')
   logger.info("Run {}, elapsed time: {} seconds.".format(i, str(time.time() - start_time_run)))
