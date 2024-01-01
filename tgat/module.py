@@ -24,6 +24,34 @@ class MergeLayer(torch.nn.Module):
         h = self.act(self.fc1(x))
         return self.fc2(h)
 
+class HadamardMLP(nn.Module):
+    def __init__(self, input_dim1: int, input_dim2: int, hidden_dim: int, output_dim: int, num_layers: int = 2):
+    """
+    Perform HadamardMLP as decoder for link prediction.
+    :param input_dim1: int, dimension of first input
+    :param input_dim2: int, dimension of the second input
+    :param hidden_dim: int, hidden dimension
+    :param output_dim: int, dimension of the output
+    """
+        super().__init__()
+
+        self.lins = nn.ModuleList()
+        self.lins.append(nn.Linear(input_dim1, hidden_dim))
+        for _ in range(num_layers - 2):
+            self.lins.append(torch.nn.Linear(hidden_dim, hidden_dim))
+        self.lins.append(torch.nn.Linear(hidden_dim, output_dim))
+
+    def reset_parameters(self):
+        for lin in self.lins:
+            lin.reset_parameters()
+
+    def forward(self, input_1: torch.Tensor, input_2: torch.Tensor):
+        x = input_1 * input_2
+        for lin in self.lins[:-1]:
+            x = lin(x)
+            x = F.relu(x)
+        x = self.lins[-1](x)
+        return x
 
 class ScaledDotProductAttention(torch.nn.Module):
     ''' Scaled Dot-Product Attention '''
@@ -392,7 +420,7 @@ class AttnModel(torch.nn.Module):
 class TGAN(torch.nn.Module):
     def __init__(self, ngh_finder, n_feat, e_feat,
                  attn_mode='prod', use_time='time', agg_method='attn', node_dim=None, time_dim=None,
-                 num_layers=3, n_head=4, null_idx=0, num_heads=1, drop_out=0.1, seq_len=None, num_class=1):
+                 num_layers=3, n_head=4, null_idx=0, num_heads=1, drop_out=0.1, seq_len=None, num_class=1, decoder='ConcatMLP'):
         super(TGAN, self).__init__()
 
         self.num_layers = num_layers
@@ -450,9 +478,12 @@ class TGAN(torch.nn.Module):
             self.time_encoder = EmptyEncode(expand_dim=self.n_feat_th.shape[1])
         else:
             raise ValueError('invalid time option!')
-
-        self.affinity_score = MergeLayer(self.feat_dim, self.feat_dim, self.feat_dim,
-                                         self.num_class)  # torch.nn.Bilinear(self.feat_dim, self.feat_dim, 1, bias=True)
+        self.decoder = decoder
+        if self.decoder == 'ConcatMLP':
+            self.affinity_score = MergeLayer(self.feat_dim, self.feat_dim, self.feat_dim,
+                                             self.num_class)  # torch.nn.Bilinear(self.feat_dim, self.feat_dim, 1, bias=True)
+        else:
+            self.affinity_score = HadamardMLP(self.feat_dim, self.feat_dim, self.feat_dim, self.num_class)
 
     def forward(self, src_idx_l, target_idx_l, cut_time_l, num_neighbors=20):
 

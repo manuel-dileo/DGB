@@ -46,6 +46,7 @@ parser.add_argument('--val_ratio', type=float, default=0.15, help='Ratio of vali
 parser.add_argument('--test_ratio', type=float, default=0.15, help='Ratio of test set.')
 parser.add_argument('--n_runs', type=int, default=1, help='Number of runs')
 parser.add_argument('--neg_sample', type=str, default='rnd', help='Strategy for the edge negative sampling.')
+parser.add_argument('--decoder', type=str, default='concatmlp', help='Decoder for link prediction', choices = ['concatmlp', 'hadamardmlp'])
 
 try:
     args = parser.parse_args()
@@ -72,6 +73,7 @@ NUM_LAYER = args.n_layer
 LEARNING_RATE = args.lr
 NODE_DIM = args.node_dim
 TIME_DIM = args.time_dim
+decoder = args.decoder
 
 # MODEL_SAVE_PATH = f'./saved_models/{args.prefix}-{args.agg_method}-{args.attn_mode}-{args.data}.pth'
 get_checkpoint_path = lambda \
@@ -136,7 +138,7 @@ for i in range(args.n_runs):
     ### Model initialize
     tgan = TGAN(train_ngh_finder, node_features, edge_features,
                 num_layers=NUM_LAYER, use_time=USE_TIME, agg_method=AGG_METHOD, attn_mode=ATTN_MODE,
-                seq_len=SEQ_LEN, n_head=NUM_HEADS, drop_out=DROP_OUT, node_dim=NODE_DIM, time_dim=TIME_DIM)
+                seq_len=SEQ_LEN, n_head=NUM_HEADS, drop_out=DROP_OUT, node_dim=NODE_DIM, time_dim=TIME_DIM, decoder=decoder)
     criterion = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(tgan.parameters(), lr=LEARNING_RATE)
     tgan = tgan.to(device)
