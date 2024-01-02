@@ -420,7 +420,7 @@ class AttnModel(torch.nn.Module):
 class TGAN(torch.nn.Module):
     def __init__(self, ngh_finder, n_feat, e_feat,
                  attn_mode='prod', use_time='time', agg_method='attn', node_dim=None, time_dim=None,
-                 num_layers=3, n_head=4, null_idx=0, num_heads=1, drop_out=0.1, seq_len=None, num_class=1, decoder='ConcatMLP'):
+                 num_layers=3, n_head=4, null_idx=0, num_heads=1, drop_out=0.1, seq_len=None, num_class=1, decoder='concatmlp'):
         super(TGAN, self).__init__()
 
         self.num_layers = num_layers
@@ -479,7 +479,7 @@ class TGAN(torch.nn.Module):
         else:
             raise ValueError('invalid time option!')
         self.decoder = decoder
-        if self.decoder == 'ConcatMLP':
+        if self.decoder == 'concatmlp':
             self.affinity_score = MergeLayer(self.feat_dim, self.feat_dim, self.feat_dim,
                                              self.num_class)  # torch.nn.Bilinear(self.feat_dim, self.feat_dim, 1, bias=True)
         else:
